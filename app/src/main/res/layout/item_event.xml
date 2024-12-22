@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:id="@+id/layEvent">
+
+    <LinearLayout
+        android:id="@+id/eventparent"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:layout_width="230dp"
+        android:layout_height="300dp"
+        android:orientation="vertical"
+        android:background="@drawable/bgitemw">
+
+        <ImageView
+            android:id="@+id/eventpic"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/vector003"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Family Gathering"
+            android:textColor="#374160"
+            android:textSize="20sp"
+            android:layout_marginTop="16dp"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:lineSpacingExtra="8dp"
+            android:fontFamily="sans-serif-light"
+            android:id="@+id/eventtitle"/>
+
+        <TextView
+            android:id="@+id/eventdet"
+            android:layout_width="match_parent"
+            android:layout_height="42dp"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:lineSpacingExtra="8dp"
+            android:text="Alumni 95 Semarang" />
+        <LinearLayout
+            android:id="@+id/eventbadge"
+            android:alpha="0"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginTop="12dp"
+            android:padding="10dp"
+            android:background="@drawable/bgitemor">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HIBURAN"
+                android:textColor="#F08C21"
+                android:textSize="14dp"
+                android:id="@+id/eventcategory"/>
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>

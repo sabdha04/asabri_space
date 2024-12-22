@@ -1,0 +1,4 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/fragment_left_bg_chosen" android:state_selected="true"/>
+    <item android:drawable="@drawable/fragment_left_bg"/>
+</selector>

@@ -1,0 +1,11 @@
+<!-- res/drawable/rounded_button_background.xml -->
+<shape xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    tools:ignore="ExtraText">
+    <solid android:color="#FFFFFF" /> <!-- Warna latar belakang tombol -->
+    <corners android:radius="12dp" /> <!-- Menentukan radius sudut tombol -->
+    <!-- Border (opsional) -->
+    <stroke
+        android:color="#0055AA"
+    android:width="2dp" />   <!-- Ketebalan border -->
+</shape>

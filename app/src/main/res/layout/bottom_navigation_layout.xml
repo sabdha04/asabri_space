@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardElevation="10dp"
+    app:cardCornerRadius="0dp">
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/bottomTabs"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:background="#FFFFFF"
+        app:tabIconTint="#4F78D0"
+        app:tabTextColor="#4F78D0"
+        app:tabTextAppearance="@style/Tabtext"
+        app:tabIndicatorColor="@android:color/holo_green_dark"
+        app:tabSelectedTextColor="@android:color/holo_green_dark">
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:icon="@drawable/ic_home" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:icon="@drawable/ic_accgroup" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:icon="@drawable/ic_create" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:icon="@drawable/ic_notifications" />
+
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="50dp"
+            android:icon="@drawable/ic_account" />
+
+    </com.google.android.material.tabs.TabLayout>
+
+</androidx.cardview.widget.CardView>

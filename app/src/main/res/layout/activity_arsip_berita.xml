@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#FFFFFF"
+        android:elevation="4dp">
+
+        <!-- Tombol Kembali -->
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="16dp"
+            android:src="@drawable/back2"
+            android:contentDescription="Kembali" />
+
+        <!-- Judul Halaman -->
+        <TextView
+            android:id="@+id/tv_judul_halaman"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:text="Arsip Berita"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#000000" />
+    </LinearLayout>
+
+    <!-- Konten -->
+    <ScrollView
+        android:id="@+id/scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/header"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Gambar Placeholder -->
+
+            <!-- Judul Berita -->
+
+            <View
+                android:id="@+id/walpa"
+                android:layout_width="match_parent"
+                android:layout_height="160dp"
+                android:layout_marginTop="16dp"
+                android:background="#D3D3D3" />
+
+            <TextView
+                android:id="@+id/tv_judul_berita"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Judul Berita"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#000000" />
+
+            <!-- Deskripsi Berita -->
+            <TextView
+                android:id="@+id/tv_deskripsi_berita"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Bersiaplah untuk sebuah perjalanan tak terlupakan di dunia seni, inovasi, dan teknologi! Galaksi Kreativitas 2024 menghadirkan pameran interaktif, workshop eksklusif, serta kompetisi seru yang dirancang untuk menginspirasi dan menghubungkan individu kreatif dari berbagai latar belakang."
+                android:textSize="14sp"
+                android:textColor="#757575" />
+
+            <!-- Tautan Deskripsi Berita -->
+            <TextView
+                android:id="@+id/tv_deskripsi_lengkap"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="(Deskripsi berita)"
+                android:textSize="14sp"
+                android:textColor="#0066CC"
+                android:textStyle="italic" />
+
+            <!-- Baris Ikon -->
+            <LinearLayout
+                android:id="@+id/ikon_aksi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:weightSum="4">
+
+                <!-- Icon Like -->
+                <ImageView
+                    android:id="@+id/icon_like"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_gravity="center"
+                    android:src="@drawable/like"
+                    android:contentDescription="Like"
+                    android:padding="8dp" />
+
+                <!-- Icon Comment -->
+                <ImageView
+                    android:id="@+id/icon_comment"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_gravity="center"
+                    android:src="@drawable/coment"
+                    android:contentDescription="Comment"
+                    android:padding="8dp" />
+
+                <!-- Icon Save -->
+                <ImageView
+                    android:id="@+id/icon_save"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_gravity="center"
+                    android:src="@drawable/save"
+                    android:contentDescription="Save"
+                    android:padding="8dp" />
+
+                <!-- Icon Share -->
+                <ImageView
+                    android:id="@+id/icon_share"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_gravity="center"
+                    android:src="@drawable/share"
+                    android:contentDescription="Share"
+                    android:padding="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>
