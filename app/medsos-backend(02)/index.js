@@ -30,10 +30,10 @@ admin.initializeApp({
 
 // Connection pool configuration
 const config = {
-    user: 'sa',
-    password: '12345678',
-    server: 'LAPTOP-BCF7QI7L',
-    database: 'medsos',
+    user: process.env.user,
+    password: process.env.password,
+    server: process.env.server,
+    database: process.env.database,
     options: {
         encrypt: true,
         trustServerCertificate: true,

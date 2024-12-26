@@ -1,18 +1,26 @@
 const sql = require('mssql');
 const express = require('express');
-const mysql = require('mysql');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
-
 const multer = require('multer');
 const admin = require('firebase-admin');
 const serviceAccount = require('./ServiceKeyFCM.json');
-
-
 const app = express();
 const port = 5000;
+
+require("dotenv").config();
+const { Server } = require('socket.io');
+const bcrypt = require('bcryptjs');
+const jwt = require("jsonwebtoken");
+const morgan = require("morgan");
+const http = require('http'); 
+const compression = require('compression');
+const axios = require("axios");
+const storage = multer.memoryStorage();
+const upload = multer({ limits: { fileSize: 50 * 1024 * 1024 },storage: storage });
+
 
 // Middleware
 app.use(cors());
@@ -20,9 +28,6 @@ app.use(bodyParser.json());
 app.use('/uploads', express.static('uploads'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 const JWT_SECRET = process.env.JWT_SECRET
 if (!JWT_SECRET) {
@@ -36,10 +41,10 @@ admin.initializeApp({
 
 // Connection pool configuration
 const config = {
-    user: 'sa',
-    password: '12345678',
-    server: 'LAPTOP-BCF7QI7L',
-    database: 'medsos',
+    user: process.env.user,
+    password: process.env.password,
+    server: process.env.server,
+    database: process.env.database,
     options: {
         encrypt: true,
         trustServerCertificate: true,
@@ -63,6 +68,524 @@ const poolPromise = new sql.ConnectionPool(config)
 const getPool = async () => {
     return poolPromise;
 };
+
+// Middleware untuk menangani error PayloadTooLargeError
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 413) {
+        return res.status(413).send({ error: 'Payload too large' });
+    }
+    next(err);
+});
+
+
+
+//======================================================================================================================//
+// Endpoint untuk mendapatkan semua berita
+app.get('/api/event', (req, res) => {
+    const query = 'SELECT id, ktpa, evtitle, evdesc, evdate, evloc, evkuota, eventpic FROM event';
+    db.query(query, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        // Konversi eventpic dari Buffer ke Base64
+        const formattedResults = results.map((event) => {
+            return {
+                ...event,
+                eventpic: event.eventpic
+                    ? `data:image/png;base64,${Buffer.from(event.eventpic).toString("base64")}`
+                    : null,
+            };
+        });
+
+        res.json(formattedResults);
+    });
+});
+const sendNotification = async (title, body, data = {}) => {
+    const payload = {
+        notification: {
+            title: title,
+            body: body,
+        },
+        data: {
+            event_title: data.evtitle || title,
+            event_desc: data.evdesc || body,
+            event_date: data.evdate || "",
+            event_location: data.evloc || "",
+            event_kuota: data.evkuota || "",
+            event_pic_uri: data.eventpic || "",
+        },
+        topic: "all", // Target all subscribed users
+    };
+
+    try {
+        await admin.messaging().send(payload);
+        console.log("Notification sent successfully:", payload);
+    } catch (error) {
+        console.error("Error sending notification:", error);
+    }
+};
+
+
+// Endpoint: Tambah event
+app.post('/api/event', async (req, res) => {
+    const { ktpa, evtitle, evdesc, evdate, evloc, evkuota, eventpic } = req.body;
+
+    const query = `
+        INSERT INTO event (ktpa, evtitle, evdesc, evdate, evloc, evkuota, eventpic, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, UNHEX(?), NOW())
+    `;
+
+    db.query(
+        query,
+        [ktpa, evtitle, evdesc, evdate, evloc, evkuota, eventpic],
+        async (err, result) => {
+            if (err) {
+                console.error("Database Error:", err.message);
+                return res.status(500).json({ error: err.message });
+            }
+
+            // Kirim notifikasi setelah event berhasil disimpan
+            await sendNotification(evtitle, evdesc);
+
+            res.json({ id: result.insertId, ...req.body });
+        }
+    );
+});
+
+// Endpoint: Update event
+app.put('/api/event/:id', (req, res) => {
+    const { id } = req.params;
+    const { ktpa, evtitle, evdesc, evdate, evloc, evkuota, eventpic } = req.body;
+
+    console.log("Request Params (ID):", id);
+    console.log("Request Body:", req.body);
+
+    let query;
+    let values;
+
+    if (eventpic) {
+        query = `
+            UPDATE event 
+            SET ktpa = ?, evtitle = ?, evdesc = ?, evdate = ?, evloc = ?, evkuota = ?, eventpic = UNHEX(?), updated_at = NOW()
+            WHERE id = ?
+        `;
+        values = [ktpa, evtitle, evdesc, evdate, evloc, evkuota, eventpic, id];
+    } else {
+        query = `
+            UPDATE event 
+            SET ktpa = ?, evtitle = ?, evdesc = ?, evdate = ?, evloc = ?, evkuota = ?, updated_at = NOW()
+            WHERE id = ?
+        `;
+        values = [ktpa, evtitle, evdesc, evdate, evloc, evkuota, id];
+    }
+
+    db.query(query, values, (err) => {
+        if (err) {
+            console.error("Database Error:", err.message); // Log error
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ message: 'Event updated successfully', id });
+    });
+});
+
+
+
+
+// Endpoint: Hapus event
+app.delete('/api/event/:id', (req, res) => {
+    const { id } = req.params;
+
+    const query = 'DELETE FROM event WHERE id = ?';
+    db.query(query, [id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Event deleted successfully', id });
+    });
+});
+
+
+//======================================================================================================================//
+// Endpoint untuk mendapatkan semua berita
+app.get('/api/news', (req, res) => {
+    db.query('SELECT * FROM news ORDER BY date DESC', (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch news.' });
+        }
+        res.json(results);
+    });
+});
+
+// Endpoint untuk menambahkan berita baru
+app.post('/api/news', (req, res) => {
+    const { title, description, date, author, image } = req.body;
+
+    if (!title || !description || !date || !author || !image) {
+        return res.status(400).json({ error: 'All fields, including image, are required.' });
+    }
+
+    // Validasi format Base64
+    const matches = image.match(/^data:(.+);base64,(.+)$/);
+    if (!matches) {
+        return res.status(400).json({ error: 'Invalid image format. Base64 format is required.' });
+    }
+
+    // Simpan langsung format Base64 ke database
+    const query = 'INSERT INTO news (title, description, date, image, author) VALUES (?, ?, ?, ?, ?)';
+    db.query(query, [title, description, date, image, author], (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to add news.' });
+        }
+        res.status(201).json({ id: results.insertId, title, description, date, image, author });
+    });
+});
+
+
+
+// Endpoint untuk memperbarui berita berdasarkan ID
+app.put('/api/news/:id', (req, res) => {
+    const { id } = req.params;
+    const { title, description, date, author, image } = req.body;
+
+    if (!title || !description || !date || !author) {
+        return res.status(400).json({ error: 'Title, description, date, and author are required.' });
+    }
+    
+
+    const query = `
+    UPDATE news 
+    SET title = ?, description = ?, date = ?, 
+        image = CASE WHEN ? IS NOT NULL THEN ? ELSE image END, 
+        author = ?
+    WHERE id = ?
+`;
+
+db.query(
+    query, 
+    [title, description, date, image, image, author, id], 
+    (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update news.' });
+        }
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'News not found.' });
+        }
+        res.json({ id, title, description, date, image, author });
+    });
+
+});
+
+
+// Endpoint untuk menghapus berita berdasarkan ID
+app.delete('/api/news/:id', (req, res) => {
+    const { id } = req.params;
+
+    db.query('DELETE FROM news WHERE id = ?', [id], (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to delete news.' });
+        }
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'News not found.' });
+        }
+        res.status(204).send();
+    });
+});
+
+
+
+
+//====================================================================================================================//
+// Mendapatkan pesan berdasarkan pengirim atau penerima
+// Socket.IO setup
+const server = http.createServer(app); // Bungkus Express dalam HTTP server
+const io = new Server(server, {
+    cors: {
+        origin: '*', // Ganti dengan domain frontend jika ada
+        methods: ['GET', 'POST'],
+    },
+});
+
+io.on("connection", (socket) => {
+    console.log(`User connected: ${socket.id}`);
+
+    // Event untuk registrasi username
+    socket.on("register", (username) => {
+        console.log(`Registering user: ${username} with socket ID: ${socket.id}`);
+        
+        // Masukkan socket ke room berdasarkan username
+        socket.join(username);
+        
+        // Tambahkan log untuk memastikan pengguna bergabung ke room
+        console.log(`Socket ${socket.id} joined room: ${username}`);
+    });
+
+    // Event untuk mengirim pesan
+    socket.on("send_message", (data) => {
+        const { message, sender, receiver } = data;
+        const createdAt = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+        // Simpan ke database
+        db.query(
+            "INSERT INTO messages (message, sender, receiver, created_at) VALUES (?, ?, ?, ?)",
+            [message, sender, receiver, createdAt],
+            (err, result) => {
+                if (err) {
+                    console.error("Database error:", err);
+                    return;
+                }
+
+                const responseData = {
+                    id: result.insertId,
+                    message,
+                    sender,
+                    receiver,
+                    created_at: createdAt,
+                };
+
+                console.log(`Emitting message from ${sender} to ${receiver}:`, responseData);
+
+                // Kirim pesan ke room penerima
+                io.to(receiver).emit("receive_message", responseData);
+
+                // Log untuk memastikan apakah pesan dikirim ke room yang benar
+                console.log(`Message sent to room: ${receiver}`);
+            }
+        );
+    });
+
+    // Tambahkan event disconnect untuk debugging
+    socket.on("disconnect", () => {
+        console.log(`User disconnected: ${socket.id}`);
+    });
+});
+
+
+//     // Set socket ID untuk pengguna yang login
+//     socket.on("register", (username) => {
+//         console.log(`Registering user ${username} with socket ID ${socket.id}`);
+//         socket.join(username); // Gunakan join untuk mengatur room dengan nama pengguna
+//     });
+// });
+
+
+app.get('/api/users', (req, res) => {
+    const query = `
+        SELECT DISTINCT sender AS username FROM messages
+        UNION
+        SELECT DISTINCT receiver AS username FROM messages
+    `;
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Database query error:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.json(results.map((row) => row.username));
+    });
+});
+
+app.get('/api/messages', (req, res) => {
+    const { sender } = req.query;
+
+    if (!sender) {
+        return res.status(400).json({ error: 'Sender is required' });
+    }
+
+    const query = `
+        SELECT * FROM messages
+        WHERE sender = ? OR receiver = ?
+        ORDER BY created_at ASC
+    `;
+    db.query(query, [sender, sender], (err, results) => {
+        if (err) {
+            console.error('Database query error:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.json(results);
+    });
+});
+
+
+app.get('/messages', (req, res) => {
+    const { sender } = req.query;
+
+    let query = "SELECT * FROM messages ORDER BY created_at ASC";
+    let params = [];
+
+    if (sender) {
+        query = `
+            SELECT * FROM messages
+            WHERE sender = ? OR receiver = ?
+            ORDER BY created_at ASC
+        `;
+        params = [sender, sender];
+    }
+
+    db.query(query, params, (err, results) => {
+        if (err) {
+            console.error('Database query error:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.json(results);
+    });
+});
+
+
+// Mengirim pesan baru
+app.post('/api/messages', (req, res) => {
+    const { message, sender, receiver } = req.body;
+
+    if (!message || !sender || !receiver) {
+        return res.status(400).json({ error: 'Invalid input data' });
+    }
+
+    const createdAt = new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace('T', ' ');
+
+    db.query(
+        'INSERT INTO messages (message, sender, receiver, created_at) VALUES (?, ?, ?, ?)',
+        [message, sender, receiver, createdAt],
+        (err, result) => {
+            if (err) {
+                console.error('Database error:', err);
+                return res.status(500).json({ error: 'Database error occurred.' });
+            }
+            res.status(201).json({ id: result.insertId, message, sender, receiver, created_at: createdAt });
+        }
+    );
+});
+
+
+
+//==================================================================================================================//
+
+
+
+
+//========================================================================================================================================================================//
+
+// API Endpoints
+
+app.get("/api/counts", async (req, res) => {
+    try {
+        const [userCountResult] = await db.promise().query("SELECT COUNT(*) AS count FROM peserta");
+        console.log('User Count:', userCountResult); // Log to verify user count
+
+        const [eventCountResult] = await db.promise().query("SELECT COUNT(*) AS count FROM event");
+        console.log('Event Count:', eventCountResult); // Log to verify event count
+
+        const [newsCountResult] = await db.promise().query("SELECT COUNT(*) AS count FROM news");
+        console.log('News Count:', eventCountResult); // Hardcoded if no table for news
+
+        // Extract counts from the query results
+        const userCount = userCountResult[0]?.count || 0;
+        const eventCount = eventCountResult[0]?.count || 0;
+        const newsCount = newsCountResult[0]?.count || 0;
+
+        res.status(200).json({
+            peserta: userCount,
+            event: eventCount,
+            news: newsCount,
+        });
+    } catch (err) {
+        console.error("Error fetching counts:", err);
+        res.status(500).json({ message: "Failed to fetch counts." });
+    }
+});
+
+// API: Register
+app.post("/api/admin/register", async (req, res) => {
+    const { username, email, password, confirm_password } = req.body;
+
+    if (password !== confirm_password) {
+        return res.status(400).json({ message: "Passwords do not match." });
+    }
+
+    try {
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Save user to database (explicitly setting createdAt)
+        const result = await query("INSERT INTO admin (username, email, password, createdAt) VALUES (?, ?, ?, ?)", [
+            username,
+            email,
+            hashedPassword,
+            new Date() // Explicitly setting createdAt
+        ]);
+
+        res.status(201).json({ message: "User registered successfully.", user: { id: result.insertId, username, email } });
+    } catch (err) {
+        res.status(500).json({ message: "Error registering user.", error: err.message });
+    }
+});
+
+// API: Login
+app.post("/api/admin/login", async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        const users = await query("SELECT * FROM admin WHERE email = ?", [email]);
+        if (users.length === 0) {
+            return res.status(400).json({ message: "Invalid email or password." });
+        }
+
+        const user = users[0];
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            return res.status(400).json({ message: "Invalid email or password." });
+        }
+
+        const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "1h" });
+
+        res.status(200).json({
+            message: "Login successful.",
+            token,
+            user: { username: user.username },
+        });
+    } catch (err) {
+        console.error("Error logging in:", err);
+        res.status(500).json({ message: "Error logging in.", error: err.message });
+    }
+});
+
+// API: Route yang dilindungi
+app.get("/api/protected", (req, res) => {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) {
+        return res.status(401).json({ message: "Authorization token is required." });
+    }
+
+    const token = authHeader.split(" ")[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        res.status(200).json({ message: "Access granted.", user: decoded });
+    } catch (err) {
+        res.status(401).json({ message: "Invalid or expired token." });
+    }
+});
+
+// Fungsi utilitas untuk query database
+function query(sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.query(sql, params, (err, results) => {
+            if (err) {
+                console.error('Database Query Error:', err);
+                return reject(err);
+            }
+            resolve(results);
+        });
+    });
+}
+
+//======================================================================================================================//
+
+
+
+//======================================================================================================================//
+
+
+
+
+
 
 // Login peserta
 app.post('/api/peserta/login', async (req, res) => {
